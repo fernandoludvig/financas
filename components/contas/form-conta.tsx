@@ -47,6 +47,34 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
   }, [initialData])
 
   const type = watch('type')
+  const watchedCategory = watch('category')
+
+  // Busca cor da categoria quando o usuário digita uma categoria existente
+  useEffect(() => {
+    const fetchCategoryColor = async () => {
+      if (watchedCategory && watchedCategory.trim()) {
+        try {
+          const response = await fetch(`/api/categorias?name=${encodeURIComponent(watchedCategory.trim())}`)
+          if (response.ok) {
+            const category = await response.json()
+            if (category && category.color) {
+              setCategoryColor(category.color)
+              setValue('categoryColor', category.color)
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao buscar categoria:', error)
+        }
+      }
+    }
+
+    // Debounce para não fazer muitas requisições
+    const timeoutId = setTimeout(() => {
+      fetchCategoryColor()
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [watchedCategory, setValue])
 
   const handleFileUpload = async (file: File) => {
     setUploading(true)
@@ -117,6 +145,23 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
       const url = initialData
         ? `/api/contas/${initialData.id}`
         : '/api/contas'
+
+      // Salva/atualiza a categoria com a cor
+      if (data.category && data.category.trim()) {
+        try {
+          await fetch('/api/categorias', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: data.category.trim(),
+              color: categoryColor || data.categoryColor || '#3b82f6'
+            })
+          })
+        } catch (error) {
+          console.error('Erro ao salvar categoria:', error)
+          // Continua mesmo se falhar ao salvar a categoria
+        }
+      }
 
       const response = await fetch(url, {
         method,

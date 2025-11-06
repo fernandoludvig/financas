@@ -18,6 +18,7 @@ model User {
   
   bills         Bill[]
   notifications NotificationConfig?
+  categories    Category[]
   
   @@map("users")
 }
@@ -60,6 +61,22 @@ model NotificationConfig {
   updatedAt         DateTime @updatedAt
   
   @@map("notification_configs")
+}
+
+model Category {
+  id            String   @id @default(cuid())
+  name          String
+  color         String   @default("#3b82f6")
+  userId        String
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([userId, name])
+  @@index([userId, name])
+  @@map("categories")
 }
 
 enum BillType {
