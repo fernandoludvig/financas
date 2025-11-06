@@ -31,12 +31,25 @@ export async function PATCH(
     const body = await request.json()
     const validatedData = billSchema.partial().parse(body)
 
+    const updateData: any = {
+      ...validatedData,
+    }
+
+    if (validatedData.dueDate) {
+      updateData.dueDate = new Date(validatedData.dueDate)
+    }
+
+    if (validatedData.status) {
+      updateData.status = validatedData.status
+    }
+
+    if (validatedData.receiptUrl !== undefined) {
+      updateData.receiptUrl = validatedData.receiptUrl || null
+    }
+
     const updatedBill = await prisma.bill.update({
       where: { id: params.id },
-      data: {
-        ...validatedData,
-        ...(validatedData.dueDate && { dueDate: new Date(validatedData.dueDate) })
-      }
+      data: updateData
     })
 
     return NextResponse.json(updatedBill)

@@ -16,8 +16,10 @@ export const billSchema = z.object({
   amount: z.number().positive('Valor deve ser positivo'),
   dueDate: z.string(),
   type: z.enum(['INCOME', 'EXPENSE']),
+  status: z.enum(['PENDING', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
   category: z.string().optional(),
   notes: z.string().optional(),
+  receiptUrl: z.string().optional(),
 })
 
 export const notificationConfigSchema = z.object({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { billSchema, type BillInput } from '@/lib/validations'
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/use-toast'
+import { Upload, X } from 'lucide-react'
 
 interface FormContaProps {
   initialData?: any
@@ -20,17 +21,62 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(initialData?.receiptUrl || null)
 
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<BillInput>({
     resolver: zodResolver(billSchema),
     defaultValues: initialData ? {
       ...initialData,
       dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
-      amount: Number(initialData.amount)
+      amount: Number(initialData.amount),
+      receiptUrl: initialData.receiptUrl || undefined
     } : undefined
   })
 
+  useEffect(() => {
+    if (initialData?.receiptUrl) {
+      setReceiptUrl(initialData.receiptUrl)
+    }
+  }, [initialData])
+
   const type = watch('type')
+
+  const handleFileUpload = async (file: File) => {
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao fazer upload do arquivo')
+      }
+
+      const result = await response.json()
+      setReceiptUrl(result.url)
+      toast({
+        title: 'Sucesso!',
+        description: 'Comprovante enviado com sucesso',
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Não foi possível fazer upload do comprovante',
+        variant: 'destructive',
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleRemoveReceipt = () => {
+    setReceiptUrl(null)
+  }
 
   const onSubmit = async (data: BillInput) => {
     setLoading(true)
@@ -44,7 +90,10 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          receiptUrl: receiptUrl || undefined,
+        }),
       })
 
       if (!response.ok) {
@@ -151,7 +200,51 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
         />
       </div>
 
-      <Button type="submit" disabled={loading} className="w-full">
+      <div>
+        <Label htmlFor="receipt">Comprovante (opcional)</Label>
+        {receiptUrl ? (
+          <div className="flex items-center gap-2 p-3 border rounded-md">
+            <a
+              href={receiptUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-sm text-blue-600 hover:underline"
+            >
+              Ver comprovante
+            </a>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleRemoveReceipt}
+              className="h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Input
+              id="receipt"
+              type="file"
+              accept="image/*,.pdf"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  handleFileUpload(file)
+                }
+              }}
+              disabled={uploading}
+              className="cursor-pointer"
+            />
+            {uploading && (
+              <p className="text-sm text-muted-foreground">Enviando comprovante...</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Button type="submit" disabled={loading || uploading} className="w-full">
         {loading ? 'Salvando...' : 'Salvar'}
       </Button>
     </form>

@@ -5,8 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Edit, Trash2, Plus } from 'lucide-react'
+import { Edit, Trash2, Plus, FileText, ExternalLink } from 'lucide-react'
 import FormConta from './form-conta'
 import StatusBadge from './status-badge'
 import { useRouter } from 'next/navigation'
@@ -20,6 +21,7 @@ interface Bill {
   type: 'INCOME' | 'EXPENSE'
   status: string
   category?: string | null
+  receiptUrl?: string | null
 }
 
 interface ListaContasProps {
@@ -67,7 +69,10 @@ export default function ListaContas({ bills }: ListaContasProps) {
         body: JSON.stringify({ status: newStatus })
       })
 
-      if (!response.ok) throw new Error('Erro ao atualizar status')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Erro ao atualizar status')
+      }
 
       toast({
         title: 'Sucesso!',
@@ -75,10 +80,10 @@ export default function ListaContas({ bills }: ListaContasProps) {
       })
 
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Erro',
-        description: 'Não foi possível atualizar o status',
+        description: error.message || 'Não foi possível atualizar o status',
         variant: 'destructive',
       })
     }
@@ -119,13 +124,14 @@ export default function ListaContas({ bills }: ListaContasProps) {
               <TableHead>Tipo</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Categoria</TableHead>
+              <TableHead>Comprovante</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {bills.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   Nenhuma conta encontrada
                 </TableCell>
               </TableRow>
@@ -145,18 +151,38 @@ export default function ListaContas({ bills }: ListaContasProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <select
+                    <Select
                       value={bill.status}
-                      onChange={(e) => handleStatusChange(bill.id, e.target.value)}
-                      className="text-sm border rounded px-2 py-1"
+                      onValueChange={(value) => handleStatusChange(bill.id, value)}
                     >
-                      <option value="PENDING">Pendente</option>
-                      <option value="PAID">Pago</option>
-                      <option value="OVERDUE">Vencido</option>
-                      <option value="CANCELLED">Cancelado</option>
-                    </select>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PENDING">Pendente</SelectItem>
+                        <SelectItem value="PAID">Pago</SelectItem>
+                        <SelectItem value="OVERDUE">Vencido</SelectItem>
+                        <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>{bill.category || '-'}</TableCell>
+                  <TableCell>
+                    {bill.receiptUrl ? (
+                      <a
+                        href={bill.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-blue-600 hover:underline"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm">Ver</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button

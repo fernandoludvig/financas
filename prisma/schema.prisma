@@ -31,6 +31,7 @@ model Bill {
   status      BillStatus @default(PENDING)
   category    String?
   notes       String?
+  receiptUrl  String?
   
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
