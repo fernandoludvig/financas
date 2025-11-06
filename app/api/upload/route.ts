@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
     const filename = `${session.user.id}_${timestamp}.${fileExtension}`
 
     // Verifica se está em produção (Vercel)
-    const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production'
+    const isVercel = process.env.VERCEL === '1'
+    const isProduction = isVercel || process.env.NODE_ENV === 'production'
+    const isDevelopment = !isVercel && (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV)
     
     // Tenta usar Vercel Blob primeiro se o token estiver configurado
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN
@@ -53,8 +55,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ url: blob.url })
       } catch (blobError: any) {
         console.error('Erro ao usar Vercel Blob:', blobError)
-        // Se estiver em produção e o Blob falhar, retorna erro
-        if (isProduction) {
+        // Se estiver em produção (Vercel) e o Blob falhar, retorna erro
+        if (isProduction && isVercel) {
           return NextResponse.json(
             { 
               error: 'Erro ao fazer upload no Vercel Blob',
@@ -64,12 +66,13 @@ export async function POST(request: NextRequest) {
             { status: 500 }
           )
         }
-        // Em desenvolvimento, tenta sistema de arquivos local
+        // Em desenvolvimento ou se não estiver no Vercel, tenta sistema de arquivos local
+        console.log('Tentando sistema de arquivos local como fallback...')
       }
     }
 
-    // Se estiver em produção sem Blob configurado, retorna erro
-    if (isProduction) {
+    // Se estiver no Vercel (produção) sem Blob configurado, retorna erro
+    if (isVercel && (!blobToken || blobToken === '' || blobToken === 're_placeholder')) {
       return NextResponse.json(
         { 
           error: 'Upload não configurado',
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Fallback para sistema de arquivos local (apenas em desenvolvimento)
+    // Fallback para sistema de arquivos local (desenvolvimento ou quando Blob não está disponível)
     try {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
@@ -97,11 +100,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url })
     } catch (fsError: any) {
       console.error('Erro ao usar sistema de arquivos:', fsError)
+      
+      // Se estiver no Vercel e o sistema de arquivos falhar, retorna erro específico
+      if (isVercel) {
+        return NextResponse.json(
+          { 
+            error: 'Upload não configurado',
+            message: 'Configure BLOB_READ_WRITE_TOKEN no Vercel. O sistema de arquivos não está disponível em produção.'
+          },
+          { status: 500 }
+        )
+      }
+      
       return NextResponse.json(
         { 
           error: 'Erro ao fazer upload do arquivo',
           message: fsError.message || 'Erro desconhecido',
-          details: process.env.NODE_ENV === 'development' ? fsError.stack : undefined
+          details: isDevelopment ? fsError.stack : undefined
         },
         { status: 500 }
       )
