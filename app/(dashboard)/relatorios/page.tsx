@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Download, FileText, ExternalLink } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface ExtratoItem {
@@ -162,6 +162,41 @@ export default function RelatoriosPage() {
     }
   }
 
+  const handleDownloadComprovante = async (receiptUrl: string, description: string) => {
+    try {
+      const response = await fetch(receiptUrl)
+      
+      if (!response.ok) {
+        throw new Error('Erro ao baixar comprovante')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      
+      const urlParts = receiptUrl.split('/')
+      const fileName = urlParts[urlParts.length - 1] || `comprovante-${description.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`
+      a.download = fileName
+      
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast({
+        title: 'Sucesso!',
+        description: 'Comprovante baixado com sucesso',
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível baixar o comprovante',
+        variant: 'destructive',
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Relatórios</h1>
@@ -309,18 +344,14 @@ export default function RelatoriosPage() {
                             <TableCell>{item.descricao}</TableCell>
                             <TableCell>
                               {item.comprovante ? (
-                                <a
-                                  href={item.comprovante}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                                <button
+                                  onClick={() => handleDownloadComprovante(item.comprovante!, item.descricao)}
+                                  className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
                                 >
-                                  <FileText className="h-4 w-4" />
-                                  <span className="text-sm">Ver</span>
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
+                                  Sim
+                                </button>
                               ) : (
-                                <span className="text-sm text-muted-foreground">-</span>
+                                <span className="text-sm text-muted-foreground">Não</span>
                               )}
                             </TableCell>
                           </TableRow>
