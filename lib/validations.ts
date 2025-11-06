@@ -15,9 +15,11 @@ export const billSchema = z.object({
   description: z.string().min(3, 'Descrição muito curta'),
   amount: z.number().positive('Valor deve ser positivo'),
   dueDate: z.string(),
+  paidDate: z.string().optional(),
   type: z.enum(['INCOME', 'EXPENSE']),
   status: z.enum(['PENDING', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
   category: z.string().optional(),
+  categoryColor: z.string().optional(),
   notes: z.string().optional(),
   receiptUrl: z.string().optional(),
 })

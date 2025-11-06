@@ -39,8 +39,16 @@ export async function PATCH(
       updateData.dueDate = new Date(validatedData.dueDate)
     }
 
+    if (validatedData.paidDate !== undefined) {
+      updateData.paidDate = validatedData.paidDate ? new Date(validatedData.paidDate) : null
+    }
+
     if (validatedData.status) {
       updateData.status = validatedData.status
+    }
+
+    if (validatedData.categoryColor !== undefined) {
+      updateData.categoryColor = validatedData.categoryColor || '#3b82f6'
     }
 
     if (validatedData.receiptUrl !== undefined) {

@@ -7,8 +7,11 @@ interface Bill {
   description: string
   amount: number
   dueDate: Date
+  paidDate?: Date | null
   type: 'INCOME' | 'EXPENSE'
   status: string
+  category?: string | null
+  categoryColor?: string | null
 }
 
 export async function generateMonthlyReport(
@@ -43,20 +46,58 @@ export async function generateMonthlyReport(
   doc.text(`Despesas: R$ ${expenses.toFixed(2)}`, 14, 64)
   doc.text(`Saldo: R$ ${balance.toFixed(2)}`, 14, 70)
   
+  const statusMap: Record<string, string> = {
+    'PENDING': 'Pendente',
+    'PAID': 'Pago',
+    'OVERDUE': 'Vencido',
+    'CANCELLED': 'Cancelado'
+  }
+
+  const hexToRgb = (hex: string): number[] => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+    return result
+      ? [
+          parseInt(result[1], 16),
+          parseInt(result[2], 16),
+          parseInt(result[3], 16)
+        ]
+      : [59, 130, 246]
+  }
+
   const tableData = bills.map(bill => [
     format(bill.dueDate, 'dd/MM/yyyy', { locale: ptBR }),
+    bill.paidDate ? format(bill.paidDate, 'dd/MM/yyyy', { locale: ptBR }) : '-',
     bill.description,
+    bill.category || '-',
     bill.type === 'INCOME' ? 'Receita' : 'Despesa',
     `R$ ${bill.amount.toFixed(2)}`,
-    bill.status
+    statusMap[bill.status] || bill.status
   ])
+  
+  const alternateRowStyles = bills.map((bill) => {
+    const color = bill.categoryColor || '#3b82f6'
+    const rgb = hexToRgb(color)
+    return {
+      fillColor: [rgb[0], rgb[1], rgb[2]],
+      textColor: [255, 255, 255]
+    }
+  })
   
   autoTable(doc, {
     startY: 80,
-    head: [['Vencimento', 'Descrição', 'Tipo', 'Valor', 'Status']],
+    head: [['Vencimento', 'Data Pagamento', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']],
     body: tableData,
-    theme: 'striped',
-    headStyles: { fillColor: [52, 152, 219] }
+    theme: 'plain',
+    headStyles: { fillColor: [52, 152, 219], textColor: [255, 255, 255] },
+    didParseCell: function(data: any) {
+      if (data.section === 'body' && data.row.index < bills.length) {
+        const bill = bills[data.row.index]
+        const color = bill.categoryColor || '#3b82f6'
+        const rgb = hexToRgb(color)
+        data.cell.styles.fillColor = [rgb[0], rgb[1], rgb[2]]
+        data.cell.styles.textColor = [255, 255, 255]
+      }
+    }
   })
   
   return doc.output('arraybuffer')

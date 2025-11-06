@@ -23,20 +23,26 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [receiptUrl, setReceiptUrl] = useState<string | null>(initialData?.receiptUrl || null)
+  const [categoryColor, setCategoryColor] = useState<string>(initialData?.categoryColor || '#3b82f6')
 
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<BillInput>({
     resolver: zodResolver(billSchema),
     defaultValues: initialData ? {
       ...initialData,
       dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+      paidDate: initialData.paidDate ? new Date(initialData.paidDate).toISOString().split('T')[0] : '',
       amount: Number(initialData.amount),
-      receiptUrl: initialData.receiptUrl || undefined
+      receiptUrl: initialData.receiptUrl || undefined,
+      categoryColor: initialData.categoryColor || '#3b82f6'
     } : undefined
   })
 
   useEffect(() => {
     if (initialData?.receiptUrl) {
       setReceiptUrl(initialData.receiptUrl)
+    }
+    if (initialData?.categoryColor) {
+      setCategoryColor(initialData.categoryColor)
     }
   }, [initialData])
 
@@ -86,18 +92,19 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
 
   const onSubmit = async (data: BillInput) => {
     setLoading(true)
-    
+
     try {
       const method = initialData ? 'PATCH' : 'POST'
-      const url = initialData 
-        ? `/api/contas/${initialData.id}` 
+      const url = initialData
+        ? `/api/contas/${initialData.id}`
         : '/api/contas'
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
+          categoryColor: categoryColor || data.categoryColor || '#3b82f6',
           receiptUrl: receiptUrl || undefined,
         }),
       })
@@ -170,6 +177,18 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
       </div>
 
       <div>
+        <Label htmlFor="paidDate">Data do Pagamento (opcional)</Label>
+        <Input
+          id="paidDate"
+          type="date"
+          {...register('paidDate')}
+        />
+        {errors.paidDate && (
+          <p className="text-sm text-red-500 mt-1">{errors.paidDate.message}</p>
+        )}
+      </div>
+
+      <div>
         <Label htmlFor="type">Tipo</Label>
         <Select
           value={type || 'EXPENSE'}
@@ -195,6 +214,37 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
           {...register('category')}
           placeholder="Ex: Alimentação"
         />
+      </div>
+
+      <div>
+        <Label htmlFor="categoryColor">Cor da Categoria (opcional)</Label>
+        <div className="flex gap-2">
+          <Input
+            id="categoryColor"
+            type="color"
+            className="w-20 h-10 cursor-pointer"
+            value={categoryColor}
+            onChange={(e) => {
+              const newColor = e.target.value
+              setCategoryColor(newColor)
+              setValue('categoryColor', newColor)
+            }}
+          />
+          <Input
+            type="text"
+            placeholder="#3b82f6"
+            value={categoryColor}
+            className="flex-1"
+            onChange={(e) => {
+              const newColor = e.target.value
+              setCategoryColor(newColor)
+              setValue('categoryColor', newColor)
+            }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Selecione uma cor para identificar esta categoria no relatório
+        </p>
       </div>
 
       <div>

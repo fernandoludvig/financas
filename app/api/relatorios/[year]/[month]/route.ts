@@ -59,8 +59,11 @@ export async function GET(
         description: bill.description,
         amount: Number(bill.amount),
         dueDate: bill.dueDate,
+        paidDate: bill.paidDate,
         type: bill.type,
-        status: bill.status
+        status: bill.status,
+        category: bill.category,
+        categoryColor: bill.categoryColor || '#3b82f6'
       })),
       user.name
     )

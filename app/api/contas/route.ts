@@ -74,6 +74,8 @@ export async function POST(request: NextRequest) {
       data: {
         ...validatedData,
         dueDate: new Date(validatedData.dueDate),
+        paidDate: validatedData.paidDate ? new Date(validatedData.paidDate) : null,
+        categoryColor: validatedData.categoryColor || '#3b82f6',
         userId: session.user.id
       }
     })

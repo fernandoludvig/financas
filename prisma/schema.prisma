@@ -27,9 +27,11 @@ model Bill {
   description String
   amount      Decimal  @db.Decimal(10, 2)
   dueDate     DateTime
+  paidDate    DateTime?
   type        BillType
   status      BillStatus @default(PENDING)
   category    String?
+  categoryColor String? @default("#3b82f6")
   notes       String?
   receiptUrl  String?
   

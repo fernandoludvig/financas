@@ -39,28 +39,62 @@ export async function POST(request: NextRequest) {
     const fileExtension = sanitizedFileName.split('.').pop() || 'pdf'
     const filename = `${session.user.id}_${timestamp}.${fileExtension}`
 
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const blob = await put(`receipts/${filename}`, file, {
-        access: 'public',
-        contentType: file.type || 'application/pdf',
-      })
-      return NextResponse.json({ url: blob.url })
-    } else {
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts')
-      
-      if (!existsSync(uploadsDir)) {
-        await mkdir(uploadsDir, { recursive: true })
+    if (process.env.BLOB_READ_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN !== '') {
+      try {
+        const blob = await put(`receipts/${filename}`, file, {
+          access: 'public',
+          contentType: file.type || 'application/pdf',
+        })
+        return NextResponse.json({ url: blob.url })
+      } catch (blobError: any) {
+        console.error('Erro ao usar Vercel Blob:', blobError)
+        return NextResponse.json(
+          { 
+            error: 'Erro ao fazer upload no Vercel Blob',
+            message: blobError.message || 'Erro desconhecido',
+            details: process.env.NODE_ENV === 'development' ? blobError.stack : undefined
+          },
+          { status: 500 }
+        )
       }
-
-      const filepath = join(uploadsDir, filename)
-      await writeFile(filepath, buffer)
-
-      const url = `/uploads/receipts/${filename}`
-      return NextResponse.json({ url })
     }
+
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+
+        const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts')
+        
+        if (!existsSync(uploadsDir)) {
+          await mkdir(uploadsDir, { recursive: true })
+        }
+
+        const filepath = join(uploadsDir, filename)
+        await writeFile(filepath, buffer)
+
+        const url = `/uploads/receipts/${filename}`
+        return NextResponse.json({ url })
+      } catch (fsError: any) {
+        console.error('Erro ao usar sistema de arquivos:', fsError)
+        return NextResponse.json(
+          { 
+            error: 'Erro ao fazer upload do arquivo',
+            message: fsError.message || 'Erro desconhecido',
+            details: process.env.NODE_ENV === 'development' ? fsError.stack : undefined
+          },
+          { status: 500 }
+        )
+      }
+    }
+
+    return NextResponse.json(
+      { 
+        error: 'Upload não configurado',
+        message: 'Configure BLOB_READ_WRITE_TOKEN para fazer upload de arquivos no Vercel'
+      },
+      { status: 500 }
+    )
   } catch (error: any) {
     console.error('Erro ao fazer upload:', error)
     return NextResponse.json(
