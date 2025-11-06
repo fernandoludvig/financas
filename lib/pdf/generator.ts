@@ -128,3 +128,79 @@ export async function generateMonthlyReport(
   return doc.output('arraybuffer')
 }
 
+interface ExtratoItem {
+  vencimento: Date | string
+  dataPagamento: Date | string | null
+  valor: number
+  descricao: string
+  comprovante: string | null
+  tipo: 'INCOME' | 'EXPENSE'
+}
+
+export async function generateExtratoContabilidade(
+  startDate: Date | string,
+  endDate: Date | string,
+  items: ExtratoItem[],
+  userName: string
+) {
+  const doc = new jsPDF()
+  
+  doc.setFontSize(20)
+  doc.text('Extrato Contabilidade', 14, 22)
+  
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
+  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
+  
+  doc.setFontSize(12)
+  doc.text(
+    `Período: ${format(start, 'dd/MM/yyyy', { locale: ptBR })} a ${format(end, 'dd/MM/yyyy', { locale: ptBR })}`,
+    14,
+    32
+  )
+  doc.text(`Usuário: ${userName}`, 14, 38)
+  
+  const tableData = items.map(item => {
+    const vencimento = typeof item.vencimento === 'string' 
+      ? new Date(item.vencimento) 
+      : item.vencimento
+    
+    const dataPagamento = item.dataPagamento
+      ? (typeof item.dataPagamento === 'string' 
+          ? new Date(item.dataPagamento) 
+          : item.dataPagamento)
+      : null
+    
+    const valorFormatado = item.tipo === 'INCOME' 
+      ? `+R$ ${item.valor.toFixed(2)}`
+      : `-R$ ${item.valor.toFixed(2)}`
+    
+    const comprovante = item.comprovante ? 'Sim' : 'Não'
+    
+    return [
+      format(vencimento, 'dd/MM/yyyy', { locale: ptBR }),
+      dataPagamento ? format(dataPagamento, 'dd/MM/yyyy', { locale: ptBR }) : '-',
+      valorFormatado,
+      item.descricao,
+      comprovante
+    ]
+  })
+  
+  autoTable(doc, {
+    startY: 50,
+    head: [['Vencimento', 'Data do Pagamento', 'Valor', 'Descrição', 'Comprovante']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [52, 152, 219], textColor: [255, 255, 255] },
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 30 }
+    }
+  })
+  
+  return doc.output('arraybuffer')
+}
+

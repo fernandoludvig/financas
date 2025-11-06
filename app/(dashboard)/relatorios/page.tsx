@@ -31,6 +31,7 @@ export default function RelatoriosPage() {
   const [endDate, setEndDate] = useState('')
   const [extrato, setExtrato] = useState<ExtratoItem[]>([])
   const [loadingExtrato, setLoadingExtrato] = useState(false)
+  const [loadingPDF, setLoadingPDF] = useState(false)
 
   useEffect(() => {
     const today = new Date()
@@ -112,6 +113,52 @@ export default function RelatoriosPage() {
       })
     } finally {
       setLoadingExtrato(false)
+    }
+  }
+
+  const handleGenerateExtratoPDF = async () => {
+    if (!startDate || !endDate) {
+      toast({
+        title: 'Erro',
+        description: 'Selecione o período',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setLoadingPDF(true)
+
+    try {
+      const response = await fetch(
+        `/api/relatorios/extrato-contabilidade/pdf?startDate=${startDate}&endDate=${endDate}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Erro ao gerar PDF')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `extrato-contabilidade-${startDate}-${endDate}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast({
+        title: 'Sucesso!',
+        description: 'PDF do extrato gerado com sucesso',
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível gerar o PDF',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingPDF(false)
     }
   }
 
@@ -213,9 +260,26 @@ export default function RelatoriosPage() {
                 </div>
               </div>
 
-              <Button onClick={handleBuscarExtrato} disabled={loadingExtrato} className="w-full">
-                {loadingExtrato ? 'Buscando...' : 'Buscar Extrato'}
-              </Button>
+              <div className="grid grid-cols-2 gap-4">
+                <Button onClick={handleBuscarExtrato} disabled={loadingExtrato} className="w-full">
+                  {loadingExtrato ? 'Buscando...' : 'Buscar Extrato'}
+                </Button>
+                <Button 
+                  onClick={handleGenerateExtratoPDF} 
+                  disabled={loadingPDF || !startDate || !endDate} 
+                  variant="outline"
+                  className="w-full"
+                >
+                  {loadingPDF ? (
+                    'Gerando PDF...'
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Gerar PDF
+                    </>
+                  )}
+                </Button>
+              </div>
 
               {extrato.length > 0 && (
                 <div className="mt-6 space-y-4">
