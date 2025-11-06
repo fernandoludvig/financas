@@ -39,8 +39,12 @@ export async function POST(request: NextRequest) {
     const fileExtension = sanitizedFileName.split('.').pop() || 'pdf'
     const filename = `${session.user.id}_${timestamp}.${fileExtension}`
 
+    // Verifica se está em produção (Vercel)
+    const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production'
+    
     // Tenta usar Vercel Blob primeiro se o token estiver configurado
-    if (process.env.BLOB_READ_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN !== '' && process.env.BLOB_READ_WRITE_TOKEN !== 're_placeholder') {
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN
+    if (blobToken && blobToken !== '' && blobToken !== 're_placeholder') {
       try {
         const blob = await put(`receipts/${filename}`, file, {
           access: 'public',
@@ -48,12 +52,34 @@ export async function POST(request: NextRequest) {
         })
         return NextResponse.json({ url: blob.url })
       } catch (blobError: any) {
-        console.error('Erro ao usar Vercel Blob, tentando sistema de arquivos:', blobError)
-        // Continua para tentar sistema de arquivos local
+        console.error('Erro ao usar Vercel Blob:', blobError)
+        // Se estiver em produção e o Blob falhar, retorna erro
+        if (isProduction) {
+          return NextResponse.json(
+            { 
+              error: 'Erro ao fazer upload no Vercel Blob',
+              message: blobError.message || 'Não foi possível fazer upload. Verifique a configuração do BLOB_READ_WRITE_TOKEN.',
+              details: process.env.NODE_ENV === 'development' ? blobError.stack : undefined
+            },
+            { status: 500 }
+          )
+        }
+        // Em desenvolvimento, tenta sistema de arquivos local
       }
     }
 
-    // Fallback para sistema de arquivos local (funciona em desenvolvimento e produção se permitido)
+    // Se estiver em produção sem Blob configurado, retorna erro
+    if (isProduction) {
+      return NextResponse.json(
+        { 
+          error: 'Upload não configurado',
+          message: 'Configure BLOB_READ_WRITE_TOKEN no Vercel para fazer upload de arquivos em produção.'
+        },
+        { status: 500 }
+      )
+    }
+
+    // Fallback para sistema de arquivos local (apenas em desenvolvimento)
     try {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)

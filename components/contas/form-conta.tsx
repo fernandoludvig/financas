@@ -65,20 +65,39 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || error.message || 'Erro ao fazer upload do arquivo')
+        let errorMessage = 'Erro ao fazer upload do arquivo'
+        try {
+          const error = await response.json()
+          errorMessage = error.message || error.error || errorMessage
+          
+          // Mensagens mais específicas
+          if (errorMessage.includes('BLOB_READ_WRITE_TOKEN')) {
+            errorMessage = 'Upload não configurado. Configure o BLOB_READ_WRITE_TOKEN no Vercel.'
+          } else if (errorMessage.includes('não configurado')) {
+            errorMessage = 'Upload não configurado. Configure o BLOB_READ_WRITE_TOKEN no Vercel.'
+          }
+        } catch (parseError) {
+          // Se não conseguir parsear o JSON, usa mensagem padrão
+          errorMessage = `Erro ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
       const result = await response.json()
+      if (!result.url) {
+        throw new Error('Resposta inválida do servidor')
+      }
+      
       setReceiptUrl(result.url)
       toast({
         title: 'Sucesso!',
         description: 'Comprovante enviado com sucesso',
       })
     } catch (error: any) {
+      console.error('Erro no upload:', error)
       toast({
-        title: 'Erro',
-        description: error.message || 'Não foi possível fazer upload do comprovante',
+        title: 'Erro ao fazer upload',
+        description: error.message || 'Não foi possível fazer upload do comprovante. Verifique sua conexão e tente novamente.',
         variant: 'destructive',
       })
     } finally {
