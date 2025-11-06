@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  bills         Bill[]
+  notifications NotificationConfig?
+  
+  @@map("users")
+}
+
+model Bill {
+  id          String   @id @default(cuid())
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  dueDate     DateTime
+  type        BillType
+  status      BillStatus @default(PENDING)
+  category    String?
+  notes       String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId, dueDate])
+  @@index([userId, status])
+  @@map("bills")
+}
+
+model NotificationConfig {
+  id                String   @id @default(cuid())
+  daysBeforeDue     Int      @default(3)
+  notificationEmail String?
+  enabled           Boolean  @default(true)
+  lastNotification  DateTime?
+  
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("notification_configs")
+}
+
+enum BillType {
+  INCOME
+  EXPENSE
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
