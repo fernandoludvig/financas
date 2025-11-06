@@ -141,24 +141,42 @@ export async function generateMonthlyReport(
   // Adiciona seção com URLs dos comprovantes no final do PDF
   const billsWithReceipt = bills.filter(b => b.receiptUrl)
   if (billsWithReceipt.length > 0) {
-    let currentY = (doc as any).lastAutoTable.finalY + 20
-    doc.setFontSize(12)
-    doc.text('URLs dos Comprovantes:', 14, currentY)
-    currentY += 8
-    
-    doc.setFontSize(10)
-    billsWithReceipt.forEach((bill) => {
+    try {
+      const table = (doc as any).lastAutoTable
+      let currentY = table && table.finalY ? table.finalY + 20 : 200
+      
+      // Verifica se precisa de nova página
       if (currentY > 250) {
         doc.addPage()
         currentY = 20
       }
-      doc.setTextColor(0, 0, 255)
-      const text = `${bill.description}: ${bill.receiptUrl}`
-      doc.text(text, 14, currentY)
-      // Adiciona link clicável
-      doc.link(14, currentY - 4, doc.getTextWidth(text), 5, { url: bill.receiptUrl })
-      currentY += 6
-    })
+      
+      doc.setFontSize(12)
+      doc.text('URLs dos Comprovantes:', 14, currentY)
+      currentY += 8
+      
+      doc.setFontSize(9)
+      billsWithReceipt.forEach((bill) => {
+        if (currentY > 250) {
+          doc.addPage()
+          currentY = 20
+        }
+        doc.setTextColor(0, 0, 255)
+        const text = `${bill.description}:`
+        doc.text(text, 14, currentY)
+        currentY += 4
+        
+        // Quebra URL longa em múltiplas linhas se necessário
+        const url = bill.receiptUrl || ''
+        const maxWidth = 180
+        const urlLines = doc.splitTextToSize(url, maxWidth)
+        doc.text(urlLines, 14, currentY)
+        currentY += (urlLines.length * 4) + 2
+      })
+    } catch (error) {
+      console.error('Erro ao adicionar URLs dos comprovantes:', error)
+      // Continua mesmo se houver erro ao adicionar URLs
+    }
   }
   
   return doc.output('arraybuffer')
