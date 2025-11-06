@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Download } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface ExtratoItem {
