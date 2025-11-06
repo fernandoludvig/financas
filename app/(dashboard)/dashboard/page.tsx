@@ -26,15 +26,28 @@ export default async function DashboardPage() {
     })
   ])
 
+  const billsFormatted = bills.map(bill => ({
+    ...bill,
+    amount: Number(bill.amount)
+  }))
+
+  const statsFormatted = stats.map(stat => ({
+    ...stat,
+    _sum: {
+      ...stat._sum,
+      amount: stat._sum.amount ? Number(stat._sum.amount) : null
+    }
+  }))
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Dashboard</h1>
       
-      <ResumoFinanceiro stats={stats} />
+      <ResumoFinanceiro stats={statsFormatted} />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <GraficoMensal bills={bills} />
-        <ProximosVencimentos bills={bills} />
+        <GraficoMensal bills={billsFormatted} />
+        <ProximosVencimentos bills={billsFormatted} />
       </div>
     </div>
   )

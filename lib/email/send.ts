@@ -7,6 +7,11 @@ export async function sendBillNotification(
   userName: string,
   bills: any[]
 ) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY não configurada. Email não será enviado.')
+    return { success: false, error: 'RESEND_API_KEY não configurada' }
+  }
+
   try {
     const { data, error } = await resend.emails.send({
       from: 'Sistema Financeiro <notificacoes@seudominio.com>',
@@ -31,6 +36,11 @@ export async function sendWelcomeEmail(
   to: string,
   userName: string
 ) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY não configurada. Email não será enviado.')
+    return { success: false, error: 'RESEND_API_KEY não configurada' }
+  }
+
   try {
     const { data, error } = await resend.emails.send({
       from: 'Sistema Financeiro <notificacoes@seudominio.com>',

@@ -15,10 +15,15 @@ export default async function ContasPage() {
     orderBy: { dueDate: 'desc' }
   })
 
+  const billsFormatted = bills.map(bill => ({
+    ...bill,
+    amount: Number(bill.amount)
+  }))
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Contas</h1>
-      <ListaContas bills={bills} />
+      <ListaContas bills={billsFormatted} />
     </div>
   )
 }
