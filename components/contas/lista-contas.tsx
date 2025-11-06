@@ -21,6 +21,7 @@ interface Bill {
   type: 'INCOME' | 'EXPENSE'
   status: string
   category?: string | null
+  categoryColor?: string | null
   receiptUrl?: string | null
 }
 
@@ -129,6 +130,7 @@ export default function ListaContas({ bills }: ListaContasProps) {
               <TableHead>Tipo</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Categoria</TableHead>
+              <TableHead>Cor da Categoria</TableHead>
               <TableHead>Comprovante</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -136,7 +138,7 @@ export default function ListaContas({ bills }: ListaContasProps) {
           <TableBody>
             {bills.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   Nenhuma conta encontrada
                 </TableCell>
               </TableRow>
@@ -172,6 +174,21 @@ export default function ListaContas({ bills }: ListaContasProps) {
                     </Select>
                   </TableCell>
                   <TableCell>{bill.category || '-'}</TableCell>
+                  <TableCell>
+                    {bill.categoryColor ? (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-6 h-6 rounded border border-gray-300"
+                          style={{ backgroundColor: bill.categoryColor }}
+                        />
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {bill.categoryColor}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {bill.receiptUrl ? (
                       <a

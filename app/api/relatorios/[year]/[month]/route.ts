@@ -63,8 +63,7 @@ export async function GET(
         type: bill.type,
         status: bill.status,
         category: bill.category,
-        categoryColor: bill.categoryColor || '#3b82f6',
-        receiptUrl: bill.receiptUrl
+        categoryColor: bill.categoryColor || '#3b82f6'
       })),
       user.name
     )
