@@ -137,7 +137,7 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pb-4">
       <div>
         <Label htmlFor="description">Descrição</Label>
         <Input

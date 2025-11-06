@@ -100,19 +100,21 @@ export default function ListaContas({ bills }: ListaContasProps) {
               Nova Conta
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Nova Conta</DialogTitle>
               <DialogDescription>
                 Preencha os dados da conta a pagar ou receber
               </DialogDescription>
             </DialogHeader>
-            <FormConta
-              onSuccess={() => {
-                setIsDialogOpen(false)
-                router.refresh()
-              }}
-            />
+            <div className="flex-1 overflow-y-auto pr-2">
+              <FormConta
+                onSuccess={() => {
+                  setIsDialogOpen(false)
+                  router.refresh()
+                }}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -216,21 +218,23 @@ export default function ListaContas({ bills }: ListaContasProps) {
 
       {editingBill && (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Editar Conta</DialogTitle>
               <DialogDescription>
                 Atualize os dados da conta
               </DialogDescription>
             </DialogHeader>
-            <FormConta
-              initialData={editingBill}
-              onSuccess={() => {
-                setEditingBill(null)
-                setIsDialogOpen(false)
-                router.refresh()
-              }}
-            />
+            <div className="flex-1 overflow-y-auto pr-2">
+              <FormConta
+                initialData={editingBill}
+                onSuccess={() => {
+                  setEditingBill(null)
+                  setIsDialogOpen(false)
+                  router.refresh()
+                }}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}

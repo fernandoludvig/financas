@@ -64,6 +64,40 @@ export async function generateMonthlyReport(
       : [59, 130, 246]
   }
 
+  // Legenda de cores das categorias
+  const uniqueCategories = Array.from(
+    new Map(
+      bills
+        .filter(b => b.category && b.categoryColor)
+        .map(b => [b.category, { category: b.category, color: b.categoryColor || '#3b82f6' }])
+    ).values()
+  )
+  
+  let tableStartY = 80
+  if (uniqueCategories.length > 0) {
+    let legendY = 80
+    doc.setFontSize(12)
+    doc.text('Legenda de Cores por Categoria:', 14, legendY)
+    legendY += 8
+    
+    doc.setFontSize(10)
+    uniqueCategories.forEach((item: any) => {
+      const rgb = hexToRgb(item.color)
+      doc.setFillColor(rgb[0], rgb[1], rgb[2])
+      doc.rect(14, legendY - 3, 5, 5, 'F')
+      doc.setTextColor(0, 0, 0)
+      doc.text(`${item.category}`, 22, legendY)
+      legendY += 6
+      
+      if (legendY > 250) {
+        doc.addPage()
+        legendY = 20
+      }
+    })
+    
+    tableStartY = legendY + 5
+  }
+
   const tableData = bills.map(bill => [
     format(bill.dueDate, 'dd/MM/yyyy', { locale: ptBR }),
     bill.paidDate ? format(bill.paidDate, 'dd/MM/yyyy', { locale: ptBR }) : '-',
@@ -74,17 +108,8 @@ export async function generateMonthlyReport(
     statusMap[bill.status] || bill.status
   ])
   
-  const alternateRowStyles = bills.map((bill) => {
-    const color = bill.categoryColor || '#3b82f6'
-    const rgb = hexToRgb(color)
-    return {
-      fillColor: [rgb[0], rgb[1], rgb[2]],
-      textColor: [255, 255, 255]
-    }
-  })
-  
   autoTable(doc, {
-    startY: 80,
+    startY: tableStartY,
     head: [['Vencimento', 'Data Pagamento', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Status']],
     body: tableData,
     theme: 'plain',

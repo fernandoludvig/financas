@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
     const fileExtension = sanitizedFileName.split('.').pop() || 'pdf'
     const filename = `${session.user.id}_${timestamp}.${fileExtension}`
 
-    if (process.env.BLOB_READ_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN !== '') {
+    // Tenta usar Vercel Blob primeiro se o token estiver configurado
+    if (process.env.BLOB_READ_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN !== '' && process.env.BLOB_READ_WRITE_TOKEN !== 're_placeholder') {
       try {
         const blob = await put(`receipts/${filename}`, file, {
           access: 'public',
@@ -47,54 +48,38 @@ export async function POST(request: NextRequest) {
         })
         return NextResponse.json({ url: blob.url })
       } catch (blobError: any) {
-        console.error('Erro ao usar Vercel Blob:', blobError)
-        return NextResponse.json(
-          { 
-            error: 'Erro ao fazer upload no Vercel Blob',
-            message: blobError.message || 'Erro desconhecido',
-            details: process.env.NODE_ENV === 'development' ? blobError.stack : undefined
-          },
-          { status: 500 }
-        )
+        console.error('Erro ao usar Vercel Blob, tentando sistema de arquivos:', blobError)
+        // Continua para tentar sistema de arquivos local
       }
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
+    // Fallback para sistema de arquivos local (funciona em desenvolvimento e produção se permitido)
+    try {
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
 
-        const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts')
-        
-        if (!existsSync(uploadsDir)) {
-          await mkdir(uploadsDir, { recursive: true })
-        }
-
-        const filepath = join(uploadsDir, filename)
-        await writeFile(filepath, buffer)
-
-        const url = `/uploads/receipts/${filename}`
-        return NextResponse.json({ url })
-      } catch (fsError: any) {
-        console.error('Erro ao usar sistema de arquivos:', fsError)
-        return NextResponse.json(
-          { 
-            error: 'Erro ao fazer upload do arquivo',
-            message: fsError.message || 'Erro desconhecido',
-            details: process.env.NODE_ENV === 'development' ? fsError.stack : undefined
-          },
-          { status: 500 }
-        )
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts')
+      
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
       }
-    }
 
-    return NextResponse.json(
-      { 
-        error: 'Upload não configurado',
-        message: 'Configure BLOB_READ_WRITE_TOKEN para fazer upload de arquivos no Vercel'
-      },
-      { status: 500 }
-    )
+      const filepath = join(uploadsDir, filename)
+      await writeFile(filepath, buffer)
+
+      const url = `/uploads/receipts/${filename}`
+      return NextResponse.json({ url })
+    } catch (fsError: any) {
+      console.error('Erro ao usar sistema de arquivos:', fsError)
+      return NextResponse.json(
+        { 
+          error: 'Erro ao fazer upload do arquivo',
+          message: fsError.message || 'Erro desconhecido',
+          details: process.env.NODE_ENV === 'development' ? fsError.stack : undefined
+        },
+        { status: 500 }
+      )
+    }
   } catch (error: any) {
     console.error('Erro ao fazer upload:', error)
     return NextResponse.json(
