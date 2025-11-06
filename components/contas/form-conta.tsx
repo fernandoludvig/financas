@@ -45,6 +45,11 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
   const handleFileUpload = async (file: File) => {
     setUploading(true)
     try {
+      const maxSize = 10 * 1024 * 1024
+      if (file.size > maxSize) {
+        throw new Error('Arquivo muito grande. Tamanho máximo: 10MB')
+      }
+
       const formData = new FormData()
       formData.append('file', file)
 
@@ -54,7 +59,8 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
       })
 
       if (!response.ok) {
-        throw new Error('Erro ao fazer upload do arquivo')
+        const error = await response.json()
+        throw new Error(error.error || error.message || 'Erro ao fazer upload do arquivo')
       }
 
       const result = await response.json()
@@ -166,7 +172,7 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
       <div>
         <Label htmlFor="type">Tipo</Label>
         <Select
-          value={type}
+          value={type || 'EXPENSE'}
           onValueChange={(value) => setValue('type', value as 'INCOME' | 'EXPENSE')}
         >
           <SelectTrigger>

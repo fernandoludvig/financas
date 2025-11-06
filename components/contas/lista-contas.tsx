@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Edit, Trash2, Plus, FileText, ExternalLink } from 'lucide-react'
@@ -103,6 +103,9 @@ export default function ListaContas({ bills }: ListaContasProps) {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Nova Conta</DialogTitle>
+              <DialogDescription>
+                Preencha os dados da conta a pagar ou receber
+              </DialogDescription>
             </DialogHeader>
             <FormConta
               onSuccess={() => {
@@ -152,7 +155,7 @@ export default function ListaContas({ bills }: ListaContasProps) {
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={bill.status}
+                      value={bill.status || 'PENDING'}
                       onValueChange={(value) => handleStatusChange(bill.id, value)}
                     >
                       <SelectTrigger className="w-[140px]">
@@ -216,6 +219,9 @@ export default function ListaContas({ bills }: ListaContasProps) {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar Conta</DialogTitle>
+              <DialogDescription>
+                Atualize os dados da conta
+              </DialogDescription>
             </DialogHeader>
             <FormConta
               initialData={editingBill}

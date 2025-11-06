@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { put } from '@vercel/blob'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -25,28 +26,49 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts')
-    
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: 'Arquivo muito grande. Tamanho máximo: 10MB' },
+        { status: 400 }
+      )
     }
 
     const timestamp = Date.now()
-    const filename = `${session.user.id}_${timestamp}_${file.name}`
-    const filepath = join(uploadsDir, filename)
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const fileExtension = sanitizedFileName.split('.').pop() || 'pdf'
+    const filename = `${session.user.id}_${timestamp}.${fileExtension}`
 
-    await writeFile(filepath, buffer)
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blob = await put(`receipts/${filename}`, file, {
+        access: 'public',
+        contentType: file.type || 'application/pdf',
+      })
+      return NextResponse.json({ url: blob.url })
+    } else {
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
 
-    const url = `/uploads/receipts/${filename}`
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts')
+      
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
 
-    return NextResponse.json({ url })
-  } catch (error) {
+      const filepath = join(uploadsDir, filename)
+      await writeFile(filepath, buffer)
+
+      const url = `/uploads/receipts/${filename}`
+      return NextResponse.json({ url })
+    }
+  } catch (error: any) {
     console.error('Erro ao fazer upload:', error)
     return NextResponse.json(
-      { error: 'Erro ao fazer upload do arquivo' },
+      { 
+        error: 'Erro ao fazer upload do arquivo',
+        message: error.message || 'Erro desconhecido',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }
