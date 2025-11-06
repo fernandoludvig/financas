@@ -1,18 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { Download, FileText } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Download, FileText, ExternalLink } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/lib/utils'
+
+interface ExtratoItem {
+  id: string
+  vencimento: string
+  dataPagamento: string | null
+  valor: number
+  descricao: string
+  comprovante: string | null
+  tipo: 'INCOME' | 'EXPENSE'
+  status: string
+}
 
 export default function RelatoriosPage() {
   const { toast } = useToast()
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [loading, setLoading] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [extrato, setExtrato] = useState<ExtratoItem[]>([])
+  const [loadingExtrato, setLoadingExtrato] = useState(false)
+
+  useEffect(() => {
+    const today = new Date()
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    
+    setStartDate(firstDay.toISOString().split('T')[0])
+    setEndDate(lastDay.toISOString().split('T')[0])
+  }, [])
 
   const handleGenerateReport = async () => {
     setLoading(true)
@@ -49,57 +76,200 @@ export default function RelatoriosPage() {
     }
   }
 
+  const handleBuscarExtrato = async () => {
+    if (!startDate || !endDate) {
+      toast({
+        title: 'Erro',
+        description: 'Selecione o período',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setLoadingExtrato(true)
+
+    try {
+      const response = await fetch(
+        `/api/relatorios/extrato-contabilidade?startDate=${startDate}&endDate=${endDate}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Erro ao buscar extrato')
+      }
+
+      const data = await response.json()
+      setExtrato(data)
+
+      toast({
+        title: 'Sucesso!',
+        description: 'Extrato carregado com sucesso',
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível buscar o extrato',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingExtrato(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Relatórios</h1>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Gerar Relatório Mensal
-          </CardTitle>
-          <CardDescription>
-            Selecione o mês e ano para gerar um relatório em PDF
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="month">Mês</Label>
-              <Input
-                id="month"
-                type="number"
-                min="1"
-                max="12"
-                value={month}
-                onChange={(e) => setMonth(parseInt(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="year">Ano</Label>
-              <Input
-                id="year"
-                type="number"
-                min="2020"
-                max="2100"
-                value={year}
-                onChange={(e) => setYear(parseInt(e.target.value))}
-              />
-            </div>
-          </div>
-          <Button onClick={handleGenerateReport} disabled={loading} className="w-full">
-            {loading ? (
-              'Gerando...'
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Gerar Relatório PDF
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="mensal" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="mensal">Relatório Mensal</TabsTrigger>
+          <TabsTrigger value="extrato">Extrato Contabilidade</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="mensal" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Gerar Relatório Mensal
+              </CardTitle>
+              <CardDescription>
+                Selecione o mês e ano para gerar um relatório em PDF
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="month">Mês</Label>
+                  <Input
+                    id="month"
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={month}
+                    onChange={(e) => setMonth(parseInt(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="year">Ano</Label>
+                  <Input
+                    id="year"
+                    type="number"
+                    min="2020"
+                    max="2100"
+                    value={year}
+                    onChange={(e) => setYear(parseInt(e.target.value))}
+                  />
+                </div>
+              </div>
+              <Button onClick={handleGenerateReport} disabled={loading} className="w-full">
+                {loading ? (
+                  'Gerando...'
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Gerar Relatório PDF
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="extrato" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Extrato Contabilidade
+              </CardTitle>
+              <CardDescription>
+                Visualize o extrato contábil por período
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome do Relatório</Label>
+                <Input value="Extrato Contabilidade" disabled className="bg-muted" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startDate">Data Inicial</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endDate">Data Final</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handleBuscarExtrato} disabled={loadingExtrato} className="w-full">
+                {loadingExtrato ? 'Buscando...' : 'Buscar Extrato'}
+              </Button>
+
+              {extrato.length > 0 && (
+                <div className="mt-6 space-y-4">
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Data do Pagamento</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Comprovante</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {extrato.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{formatDate(item.vencimento)}</TableCell>
+                            <TableCell>
+                              {item.dataPagamento ? formatDate(item.dataPagamento) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <span className={item.tipo === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
+                                {item.tipo === 'INCOME' ? '+' : '-'}{formatCurrency(item.valor)}
+                              </span>
+                            </TableCell>
+                            <TableCell>{item.descricao}</TableCell>
+                            <TableCell>
+                              {item.comprovante ? (
+                                <a
+                                  href={item.comprovante}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                                >
+                                  <FileText className="h-4 w-4" />
+                                  <span className="text-sm">Ver</span>
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
