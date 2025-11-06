@@ -52,29 +52,38 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
   // Busca cor da categoria quando o usuário digita uma categoria existente
   useEffect(() => {
     const fetchCategoryColor = async () => {
-      if (watchedCategory && watchedCategory.trim()) {
-        try {
-          const response = await fetch(`/api/categorias?name=${encodeURIComponent(watchedCategory.trim())}`)
-          if (response.ok) {
-            const category = await response.json()
-            if (category && category.color) {
-              setCategoryColor(category.color)
-              setValue('categoryColor', category.color)
+      const categoryName = watchedCategory?.trim()
+      if (!categoryName || categoryName.length < 2) {
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/categorias?name=${encodeURIComponent(categoryName)}`)
+        if (response.ok) {
+          const category = await response.json()
+          if (category && category.color) {
+            setCategoryColor(category.color)
+            setValue('categoryColor', category.color, { shouldValidate: false })
+          } else {
+            // Se não encontrou a categoria, mantém a cor atual ou usa padrão
+            if (!initialData?.categoryColor) {
+              setCategoryColor('#3b82f6')
+              setValue('categoryColor', '#3b82f6', { shouldValidate: false })
             }
           }
-        } catch (error) {
-          console.error('Erro ao buscar categoria:', error)
         }
+      } catch (error) {
+        console.error('Erro ao buscar categoria:', error)
       }
     }
 
     // Debounce para não fazer muitas requisições
     const timeoutId = setTimeout(() => {
       fetchCategoryColor()
-    }, 500)
+    }, 300)
 
     return () => clearTimeout(timeoutId)
-  }, [watchedCategory, setValue])
+  }, [watchedCategory, setValue, initialData])
 
   const handleFileUpload = async (file: File) => {
     setUploading(true)

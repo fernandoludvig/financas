@@ -142,8 +142,17 @@ export async function generateMonthlyReport(
   const billsWithReceipt = bills.filter(b => b.receiptUrl)
   if (billsWithReceipt.length > 0) {
     try {
-      const table = (doc as any).lastAutoTable
-      let currentY = table && table.finalY ? table.finalY + 20 : 200
+      // Obtém a posição final da tabela de forma segura
+      let currentY = 200
+      try {
+        const table = (doc as any).lastAutoTable
+        if (table && typeof table.finalY === 'number') {
+          currentY = table.finalY + 20
+        }
+      } catch (e) {
+        // Se não conseguir acessar lastAutoTable, usa posição padrão
+        currentY = 200
+      }
       
       // Verifica se precisa de nova página
       if (currentY > 250) {
@@ -169,7 +178,30 @@ export async function generateMonthlyReport(
         // Quebra URL longa em múltiplas linhas se necessário
         const url = bill.receiptUrl || ''
         const maxWidth = 180
-        const urlLines = doc.splitTextToSize(url, maxWidth)
+        
+        // Usa splitTextToSize se disponível, senão quebra manualmente
+        let urlLines: string[]
+        try {
+          if (typeof doc.splitTextToSize === 'function') {
+            urlLines = doc.splitTextToSize(url, maxWidth)
+          } else {
+            // Quebra manualmente se o método não existir
+            urlLines = []
+            let remaining = url
+            while (remaining.length > 0) {
+              if (remaining.length <= 50) {
+                urlLines.push(remaining)
+                break
+              }
+              urlLines.push(remaining.substring(0, 50))
+              remaining = remaining.substring(50)
+            }
+          }
+        } catch (e) {
+          // Se falhar, usa a URL completa
+          urlLines = [url]
+        }
+        
         doc.text(urlLines, 14, currentY)
         currentY += (urlLines.length * 4) + 2
       })

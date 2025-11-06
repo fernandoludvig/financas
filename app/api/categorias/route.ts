@@ -17,15 +17,29 @@ export async function GET(request: NextRequest) {
     const name = searchParams.get('name')
 
     if (name) {
-      // Busca categoria específica
-      const category = await prisma.category.findUnique({
+      // Busca categoria específica (case-insensitive)
+      const categoryName = name.trim()
+      
+      // Primeiro tenta busca exata
+      let category = await prisma.category.findUnique({
         where: {
           userId_name: {
             userId: session.user.id,
-            name: name.trim()
+            name: categoryName
           }
         }
       })
+
+      // Se não encontrar, tenta busca case-insensitive
+      if (!category) {
+        const allCategories = await prisma.category.findMany({
+          where: { userId: session.user.id }
+        })
+        
+        category = allCategories.find(
+          c => c.name.toLowerCase() === categoryName.toLowerCase()
+        ) || null
+      }
 
       if (category) {
         return NextResponse.json(category)
