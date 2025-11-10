@@ -8,11 +8,17 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Bell, Mail, Save } from 'lucide-react'
 
+type NotificationConfigState = {
+  daysBeforeDue: string
+  notificationEmail: string
+  enabled: boolean
+}
+
 export default function ConfiguracoesPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  const [config, setConfig] = useState({
-    daysBeforeDue: 3,
+  const [config, setConfig] = useState<NotificationConfigState>({
+    daysBeforeDue: '3',
     notificationEmail: '',
     enabled: true,
   })
@@ -21,9 +27,9 @@ export default function ConfiguracoesPage() {
     fetch('/api/notificacoes/config')
       .then(res => res.json())
       .then(data => {
-        if (data.daysBeforeDue) {
+        if (typeof data.daysBeforeDue === 'number') {
           setConfig({
-            daysBeforeDue: data.daysBeforeDue,
+            daysBeforeDue: String(data.daysBeforeDue),
             notificationEmail: data.notificationEmail || '',
             enabled: data.enabled,
           })
@@ -36,10 +42,17 @@ export default function ConfiguracoesPage() {
     setLoading(true)
 
     try {
+      const daysValue = parseInt(config.daysBeforeDue, 10)
+      const payload = {
+        daysBeforeDue: Number.isNaN(daysValue) ? 3 : Math.min(Math.max(daysValue, 1), 30),
+        notificationEmail: config.notificationEmail.trim(),
+        enabled: config.enabled,
+      }
+
       const response = await fetch('/api/notificacoes/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -121,10 +134,16 @@ export default function ConfiguracoesPage() {
             <Input
               id="daysBeforeDue"
               type="number"
+              inputMode="numeric"
               min="1"
               max="30"
               value={config.daysBeforeDue}
-              onChange={(e) => setConfig({ ...config, daysBeforeDue: parseInt(e.target.value) })}
+              onChange={(e) => {
+                const value = e.target.value
+                if (value === '' || (/^\d+$/.test(value) && Number(value) <= 99)) {
+                  setConfig({ ...config, daysBeforeDue: value })
+                }
+              }}
             />
             <p className="text-sm text-muted-foreground mt-1">
               Você receberá um email quando houver contas vencendo nos próximos X dias
