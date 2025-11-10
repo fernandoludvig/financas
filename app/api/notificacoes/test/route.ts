@@ -63,19 +63,24 @@ export async function POST(request: NextRequest) {
       }))
     )
 
-    if (result.success) {
-      await prisma.notificationConfig.update({
-        where: { id: config.id },
-        data: { lastNotification: new Date() }
-      })
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: result.error || 'Erro ao enviar email de teste',
+          message: 'Erro ao enviar email de teste'
+        },
+        { status: 500 }
+      )
     }
 
+    await prisma.notificationConfig.update({
+      where: { id: config.id },
+      data: { lastNotification: new Date() }
+    })
+
     return NextResponse.json({
-      success: result.success,
-      message: result.success
-        ? 'Email de teste enviado com sucesso'
-        : 'Erro ao enviar email de teste',
-      error: result.error
+      success: true,
+      message: 'Email de teste enviado com sucesso'
     })
   } catch (error) {
     console.error('Erro ao testar notificação:', error)
