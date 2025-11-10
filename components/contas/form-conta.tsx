@@ -15,36 +15,65 @@ import { Upload, X } from 'lucide-react'
 interface FormContaProps {
   initialData?: any
   onSuccess?: () => void
+  mode?: 'create' | 'edit' | 'duplicate'
 }
 
-export default function FormConta({ initialData, onSuccess }: FormContaProps) {
+export default function FormConta({ initialData, onSuccess, mode = 'create' }: FormContaProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [receiptUrl, setReceiptUrl] = useState<string | null>(initialData?.receiptUrl || null)
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(
+    mode === 'duplicate' ? null : initialData?.receiptUrl || null
+  )
   const [categoryColor, setCategoryColor] = useState<string>(initialData?.categoryColor || '#3b82f6')
+
+  const buildDefaultValues = () => {
+    if (!initialData) {
+      return undefined
+    }
+
+    const base = {
+      description: initialData.description,
+      amount: Number(initialData.amount),
+      dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+      paidDate: initialData.paidDate ? new Date(initialData.paidDate).toISOString().split('T')[0] : '',
+      type: initialData.type,
+      status: initialData.status,
+      category: initialData.category || '',
+      categoryColor: initialData.categoryColor || '#3b82f6',
+      notes: initialData.notes || '',
+      receiptUrl: initialData.receiptUrl || undefined,
+    }
+
+    if (mode === 'duplicate') {
+      return {
+        ...base,
+        paidDate: '',
+        status: 'PENDING',
+        receiptUrl: undefined,
+      }
+    }
+
+    return base
+  }
 
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<BillInput>({
     resolver: zodResolver(billSchema),
-    defaultValues: initialData ? {
-      ...initialData,
-      dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
-      paidDate: initialData.paidDate ? new Date(initialData.paidDate).toISOString().split('T')[0] : '',
-      amount: Number(initialData.amount),
-      receiptUrl: initialData.receiptUrl || undefined,
-      categoryColor: initialData.categoryColor || '#3b82f6'
-    } : undefined
+    defaultValues: buildDefaultValues()
   })
 
   useEffect(() => {
-    if (initialData?.receiptUrl) {
+    if (mode === 'duplicate') {
+      setReceiptUrl(null)
+    } else if (initialData?.receiptUrl) {
       setReceiptUrl(initialData.receiptUrl)
     }
     if (initialData?.categoryColor) {
       setCategoryColor(initialData.categoryColor)
+      setValue('categoryColor', initialData.categoryColor, { shouldValidate: false })
     }
-  }, [initialData])
+  }, [initialData, mode, setValue])
 
   const type = watch('type')
   const watchedCategory = watch('category')
@@ -150,8 +179,8 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
     setLoading(true)
 
     try {
-      const method = initialData ? 'PATCH' : 'POST'
-      const url = initialData
+      const method = mode === 'edit' ? 'PATCH' : 'POST'
+      const url = mode === 'edit' && initialData
         ? `/api/contas/${initialData.id}`
         : '/api/contas'
 
@@ -177,6 +206,7 @@ export default function FormConta({ initialData, onSuccess }: FormContaProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
+          status: data.status || (mode === 'duplicate' ? 'PENDING' : data.status),
           categoryColor: categoryColor || data.categoryColor || '#3b82f6',
           receiptUrl: receiptUrl || undefined,
         }),

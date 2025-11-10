@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Edit, Trash2, Plus, FileText, ExternalLink } from 'lucide-react'
+import { Edit, Trash2, Plus, FileText, ExternalLink, Copy } from 'lucide-react'
 import FormConta from './form-conta'
 import StatusBadge from './status-badge'
 import { useRouter } from 'next/navigation'
@@ -32,8 +32,9 @@ interface ListaContasProps {
 export default function ListaContas({ bills }: ListaContasProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [editingBill, setEditingBill] = useState<Bill | null>(null)
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'duplicate'>('create')
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta conta?')) {
@@ -90,28 +91,63 @@ export default function ListaContas({ bills }: ListaContasProps) {
     }
   }
 
+  const handleOpenDialog = (mode: 'create' | 'edit' | 'duplicate', bill?: Bill) => {
+    setDialogMode(mode)
+    setSelectedBill(bill || null)
+    setIsDialogOpen(true)
+  }
+
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open)
+    if (!open) {
+      setSelectedBill(null)
+      setDialogMode('create')
+    }
+  }
+
+  const dialogCopy = {
+    create: {
+      title: 'Nova Conta',
+      description: 'Preencha os dados da conta a pagar ou receber'
+    },
+    edit: {
+      title: 'Editar Conta',
+      description: 'Atualize os dados da conta'
+    },
+    duplicate: {
+      title: 'Duplicar Conta',
+      description: 'Revise os dados antes de salvar a nova conta'
+    }
+  }
+
+  const dialogContent = dialogCopy[dialogMode]
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Contas</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => handleOpenDialog('create')}>
               <Plus className="mr-2 h-4 w-4" />
               Nova Conta
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle>Nova Conta</DialogTitle>
+              <DialogTitle>{dialogContent.title}</DialogTitle>
               <DialogDescription>
-                Preencha os dados da conta a pagar ou receber
+                {dialogContent.description}
               </DialogDescription>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto pr-2">
               <FormConta
+                initialData={dialogMode === 'create' ? undefined : selectedBill}
+                mode={dialogMode}
                 onSuccess={() => {
+                  setSelectedBill(null)
                   setIsDialogOpen(false)
+                  setDialogMode('create')
                   router.refresh()
                 }}
               />
@@ -210,17 +246,24 @@ export default function ListaContas({ bills }: ListaContasProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
-                          setEditingBill(bill)
-                          setIsDialogOpen(true)
-                        }}
+                        onClick={() => handleOpenDialog('edit', bill)}
+                        aria-label="Editar conta"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => handleOpenDialog('duplicate', bill)}
+                        aria-label="Duplicar conta"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleDelete(bill.id)}
+                        aria-label="Excluir conta"
                       >
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
@@ -232,29 +275,6 @@ export default function ListaContas({ bills }: ListaContasProps) {
           </TableBody>
         </Table>
       </div>
-
-      {editingBill && (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-h-[90vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle>Editar Conta</DialogTitle>
-              <DialogDescription>
-                Atualize os dados da conta
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto pr-2">
-              <FormConta
-                initialData={editingBill}
-                onSuccess={() => {
-                  setEditingBill(null)
-                  setIsDialogOpen(false)
-                  router.refresh()
-                }}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }

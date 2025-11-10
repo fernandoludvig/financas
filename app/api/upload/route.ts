@@ -38,6 +38,12 @@ export async function POST(request: NextRequest) {
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const fileExtension = sanitizedFileName.split('.').pop() || 'pdf'
     const filename = `${session.user.id}_${timestamp}.${fileExtension}`
+    const now = new Date()
+    const yearFolder = String(now.getFullYear())
+    const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'long' })
+    const monthName = monthFormatter.format(now).toLowerCase()
+    const monthSlug = monthName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')
+    const monthFolder = `${String(now.getMonth() + 1).padStart(2, '0')}-${monthSlug}`
 
     // Verifica se está em produção (Vercel)
     const isVercel = process.env.VERCEL === '1'
@@ -48,7 +54,7 @@ export async function POST(request: NextRequest) {
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN
     if (blobToken && blobToken !== '' && blobToken !== 're_placeholder') {
       try {
-        const blob = await put(`receipts/${filename}`, file, {
+        const blob = await put(`receipts/${yearFolder}/${monthFolder}/${filename}`, file, {
           access: 'public',
           contentType: file.type || 'application/pdf',
         })
@@ -87,7 +93,7 @@ export async function POST(request: NextRequest) {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
 
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts')
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts', yearFolder, monthFolder)
       
       if (!existsSync(uploadsDir)) {
         await mkdir(uploadsDir, { recursive: true })
@@ -96,7 +102,7 @@ export async function POST(request: NextRequest) {
       const filepath = join(uploadsDir, filename)
       await writeFile(filepath, buffer)
 
-      const url = `/uploads/receipts/${filename}`
+      const url = `/uploads/receipts/${yearFolder}/${monthFolder}/${filename}`
       return NextResponse.json({ url })
     } catch (fsError: any) {
       console.error('Erro ao usar sistema de arquivos:', fsError)
